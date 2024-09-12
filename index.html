@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-select Canvas Tool</title>
+    <style>
+      canvas {
+        border: 1px solid #000;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" width="800" height="600"></canvas>
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      // Sample items on the canvas
+      const items = [
+        { x: 50, y: 50, width: 60, height: 60, color: "red", selected: false },
+        {
+          x: 200,
+          y: 100,
+          width: 80,
+          height: 40,
+          color: "blue",
+          selected: false,
+        },
+        {
+          x: 350,
+          y: 200,
+          width: 100,
+          height: 100,
+          color: "green",
+          selected: false,
+        },
+        {
+          x: 500,
+          y: 300,
+          width: 70,
+          height: 70,
+          color: "purple",
+          selected: false,
+        },
+      ];
+
+      let isDrawing = false;
+      let isDragging = false;
+      let startX, startY, offsetX, offsetY;
+
+      let selectedForDragging = [];
+
+      function drawItems() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        items.forEach((item) => {
+          ctx.fillStyle = item.color;
+          ctx.fillRect(item.x, item.y, item.width, item.height);
+          if (item.selected) {
+            ctx.strokeStyle = "yellow";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(
+              item.x - 2,
+              item.y - 2,
+              item.width + 4,
+              item.height + 4
+            );
+          }
+        });
+      }
+
+      function drawSelectionBox(x, y, width, height) {
+        ctx.strokeStyle = "rgba(0, 0, 255, 0.5)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, width, height);
+        ctx.fillStyle = "rgba(0, 0, 255, 0.1)";
+        ctx.fillRect(x, y, width, height);
+      }
+
+      function isIntersecting(item, selectionBox) {
+        return !(
+          item.x > selectionBox.x + selectionBox.width ||
+          item.x + item.width < selectionBox.x ||
+          item.y > selectionBox.y + selectionBox.height ||
+          item.y + item.height < selectionBox.y
+        );
+      }
+
+      canvas.addEventListener("mousedown", (e) => {
+        startX = e.clientX - canvas.offsetLeft;
+        startY = e.clientY - canvas.offsetTop;
+
+        // Check if clicking on a selected item for dragging
+        selectedForDragging = items.filter((item) => item.selected);
+        let clickedOnSelectedItem = selectedForDragging.some(
+          (item) =>
+            startX >= item.x &&
+            startX <= item.x + item.width &&
+            startY >= item.y &&
+            startY <= item.y + item.height
+        );
+
+        if (clickedOnSelectedItem) {
+          isDragging = true;
+          offsetX = startX;
+          offsetY = startY;
+        } else {
+          isDrawing = true;
+        }
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        const currentX = e.clientX - canvas.offsetLeft;
+        const currentY = e.clientY - canvas.offsetTop;
+
+        if (isDragging) {
+          // Calculate movement delta
+          const dx = currentX - offsetX;
+          const dy = currentY - offsetY;
+
+          // Move all selected items by delta
+          selectedForDragging.forEach((item) => {
+            item.x += dx;
+            item.y += dy;
+          });
+
+          offsetX = currentX;
+          offsetY = currentY;
+
+          drawItems();
+        }
+
+        if (isDrawing) {
+          drawItems();
+          drawSelectionBox(
+            startX,
+            startY,
+            currentX - startX,
+            currentY - startY
+          );
+        }
+      });
+
+      canvas.addEventListener("mouseup", (e) => {
+        if (isDragging) {
+          isDragging = false;
+          return;
+        }
+
+        if (isDrawing) {
+          isDrawing = false;
+          const endX = e.clientX - canvas.offsetLeft;
+          const endY = e.clientY - canvas.offsetTop;
+
+          const selectionBox = {
+            x: Math.min(startX, endX),
+            y: Math.min(startY, endY),
+            width: Math.abs(endX - startX),
+            height: Math.abs(endY - startY),
+          };
+
+          items.forEach((item) => {
+            item.selected = isIntersecting(item, selectionBox);
+          });
+
+          drawItems();
+        }
+      });
+
+      // Initial draw
+      drawItems();
+    </script>
+  </body>
+</html>
